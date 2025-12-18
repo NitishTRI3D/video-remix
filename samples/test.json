@@ -1,0 +1,12 @@
+[
+  {
+    "id": "shayari_001",
+    "shayari": "दिल में तेरी याद का दीया जलाया है, हर रात तुझे ख्वाबों में बुलाया है",
+    "human_video_prompt": "A single person delivers a quiet spoken monologue in natural Hindi.\n\nVoice style: everyday conversational speech, flat and non-melodic.\nThis is not singing, not recitation, and not a performance.\nSpeech sounds like a personal voice note or inner thought.\n\nAvoid any text/subtitles in the video.\n\n[0:00–0:00.5] small breath, eyes settle\n[0:00.5–0:02.5] \"दिल में तेरी याद का…\" same tone\n[0:02.5–0:02.9] brief pause\n[0:02.9–0:04.7] \"दीया जलाया है…\" no change in tone\n[0:04.7–0:05.2] small breath\n[0:05.2–0:07.5] \"हर रात तुझे ख्वाबों में बुलाया है…\" same tone\n[0:07.5–0:08.0] soft exhale, gaze shifts slightly\n\nNo music. No melody. No rhythmic stretching of words.\nNatural imperfect speech delivery.\nVisual consistency unchanged: clothing, hair, lighting, background.\nDuration: 8 seconds.",
+    "human_portrait_prompt": "A 35 year old Indian man with salt and pepper hair neatly combed back, a faint stubble, and thoughtful eyes, wearing a dark blue kurta with subtle embroidery, a melancholic smile playing on his lips, warm golden hour sidelight coming from a nearby window, a balcony with potted jasmine plants overlooking a misty cityscape at dusk. Portrait shot, clear face, cinematic. No text in image.",
+    "ambient_video_prompt": "Beautiful Indian woman in a vibrant red saree, [0-3s] Wide shot: Woman on terrace, wind in hair, city lights with bokeh behind, [3-5s] Medium shot: Adjusting jasmine flowers in hair, shy smile, looking away, [5-8s] Close-up: Eyes looking up dreamily, hand touching lips softly, golden hour lighting, modern rooftop with city view. 8 seconds, 9:16 vertical, cinematic cuts with smooth transitions. No dialogue, no audio.",
+    "formats": {
+      "ambient_video": "/Users/parvathi/Desktop/ai_creator/outputs/test/shayari_001/ambient_video.mp4"
+    }
+  }
+]

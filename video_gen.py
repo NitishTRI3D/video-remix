@@ -80,138 +80,236 @@ VIDEO_PERSON_GENERATION = "allow_adult"
 # Text overlay settings
 FONT_PATH = "/System/Library/Fonts/Kohinoor.ttc"
 FONT_SIZE = 60  # Increased for better readability at bottom
-TEXT_COLOR = "0xFFD700"  # Gold/Yellow
 BORDER_COLOR = "black"
 BORDER_WIDTH = 3  # Thicker border for better contrast
+
+# Subtitle color options (10 colors)
+SUBTITLE_COLORS = [
+    ("0xFFD700", "Gold"),
+    ("0xFFFFFF", "White"),
+    ("0x00FFFF", "Cyan"),
+    ("0xFF69B4", "Pink"),
+    ("0x98FB98", "Pale Green"),
+    ("0xFFA500", "Orange"),
+    ("0xE6E6FA", "Lavender"),
+    ("0xF0E68C", "Khaki"),
+    ("0x87CEEB", "Sky Blue"),
+    ("0xFFB6C1", "Light Pink"),
+]
+
+# =============================================================================
+# DIVERSITY PARAMETERS
+# =============================================================================
+
+# Human recital character diversity
+RECITAL_GENDERS = ["man", "woman"]
+
+RECITAL_AGE_GROUPS = [
+    ("young", "22-28", "youthful energy, fresh face"),
+    ("mature", "30-40", "confident, experienced look"),
+    ("middle-aged", "42-52", "wise, contemplative expression"),
+    ("elder", "55-65", "weathered, philosophical demeanor"),
+]
+
+RECITAL_VOICE_TEXTURES = [
+    "soft and breathy, intimate whisper-like",
+    "deep and resonant, commanding presence",
+    "gentle and melodic, soothing tone",
+    "raw and emotional, slightly cracked",
+    "calm and measured, meditative pace",
+]
+
+RECITAL_SETTINGS = [
+    "by a rain-streaked window with city lights behind",
+    "in a dimly lit old library with books",
+    "on a moonlit balcony with plants",
+    "in a candlelit room with warm shadows",
+    "by a foggy riverside at dawn",
+    "in an artist's studio with paintings",
+    "at a quiet café corner with steaming chai",
+    "on a train, watching landscapes pass",
+]
+
+RECITAL_CLOTHING_MALE = [
+    "simple white kurta",
+    "dark nehru jacket over cream shirt",
+    "casual linen shirt, slightly unbuttoned",
+    "traditional shawl over kurta",
+    "modern black t-shirt",
+]
+
+RECITAL_CLOTHING_FEMALE = [
+    "elegant silk saree with subtle jewelry",
+    "simple cotton kurta with dupatta",
+    "modern kurti with jhumka earrings",
+    "traditional salwar kameez",
+    "contemporary dress with Indian accessories",
+]
+
+# Ambient video diversity
+AMBIENT_SETTINGS = [
+    "rooftop terrace at golden hour with city skyline",
+    "rain-soaked street with neon reflections",
+    "peaceful beach at sunset with waves",
+    "traditional haveli courtyard with diyas",
+    "misty hill station with pine trees",
+    "bustling old city lane at dusk",
+    "serene lake with mountains behind",
+    "flower-filled garden in soft morning light",
+    "vintage café with large windows",
+    "temple steps at evening aarti time",
+]
+
+AMBIENT_WOMAN_APPEARANCES = [
+    ("long flowing black hair", "fair complexion", "delicate features"),
+    ("wavy brown hair", "dusky skin tone", "expressive eyes"),
+    ("short stylish hair", "wheatish complexion", "strong jawline"),
+    ("braided hair with flowers", "medium skin tone", "soft features"),
+    ("curly voluminous hair", "olive complexion", "prominent cheekbones"),
+]
+
+AMBIENT_WOMAN_OUTFITS = [
+    "vibrant red saree with gold border",
+    "pastel blue lehenga with silver work",
+    "white cotton saree with minimal jewelry",
+    "modern fusion outfit - crop top and palazzo",
+    "elegant black dress with traditional earrings",
+    "yellow anarkali with floral print",
+    "maroon silk kurta with churidar",
+    "emerald green saree with temple jewelry",
+]
+
+AMBIENT_CUT_STYLES = [
+    ("single", "One continuous shot with subtle camera movement"),
+    ("two-cut", "[0-4s] Wide establishing shot, [4-8s] Close-up emotional shot"),
+    ("three-cut", "[0-3s] Wide shot, [3-5s] Medium shot, [5-8s] Close-up"),
+    ("dynamic", "[0-2s] Detail shot, [2-5s] Medium shot with movement, [5-8s] Wide pullback"),
+]
+
+def get_random_subtitle_color():
+    """Get a random subtitle color."""
+    color, name = random.choice(SUBTITLE_COLORS)
+    return color, name
+
+def get_random_recital_character():
+    """Get random parameters for human recital character."""
+    gender = random.choice(RECITAL_GENDERS)
+    age_group, age_range, age_desc = random.choice(RECITAL_AGE_GROUPS)
+    voice = random.choice(RECITAL_VOICE_TEXTURES)
+    setting = random.choice(RECITAL_SETTINGS)
+    clothing = random.choice(RECITAL_CLOTHING_MALE if gender == "man" else RECITAL_CLOTHING_FEMALE)
+
+    return {
+        "gender": gender,
+        "age_group": age_group,
+        "age_range": age_range,
+        "age_desc": age_desc,
+        "voice_texture": voice,
+        "setting": setting,
+        "clothing": clothing,
+    }
+
+def get_random_ambient_params():
+    """Get random parameters for ambient video."""
+    setting = random.choice(AMBIENT_SETTINGS)
+    hair, skin, features = random.choice(AMBIENT_WOMAN_APPEARANCES)
+    outfit = random.choice(AMBIENT_WOMAN_OUTFITS)
+    cut_style, cut_desc = random.choice(AMBIENT_CUT_STYLES)
+
+    return {
+        "setting": setting,
+        "hair": hair,
+        "skin": skin,
+        "features": features,
+        "outfit": outfit,
+        "cut_style": cut_style,
+        "cut_desc": cut_desc,
+    }
 
 
 # =============================================================================
 # PROMPT TEMPLATES
 # =============================================================================
 
-# Image prompt for human portrait (character for video)
+# Image prompt for human portrait (character for video) - uses diversity params
 HUMAN_PORTRAIT_PROMPT_TEMPLATE = """
-Analyze this Hindi Shayari and generate a UNIQUE character portrait prompt for video generation.
+Create a character portrait prompt for video generation based on the given parameters.
 
 SHAYARI:
 "{shayari}"
 
-TASK: Create a prompt for a realistic portrait of a person who would speak this shayari.
-BE CREATIVE with setting, lighting, and character details!
+MANDATORY CHARACTER PARAMETERS (use these EXACTLY):
+- Gender: {gender}
+- Age Range: {age_range} years old
+- Character Feel: {age_desc}
+- Voice Style: {voice_texture}
+- Clothing: {clothing}
+- Setting: {setting}
 
-CHARACTER OPTIONS (vary age, appearance, setting):
-- YOUNG POET (20-28): college student, aspiring writer, musician, artist - casual modern clothes
-- MATURE SOUL (28-40): working professional, traveler, teacher, craftsperson - semi-formal
-- WISE ELDER (45-60): experienced, weathered, philosophical look - traditional clothing
-
-SETTING OPTIONS (NOT just plain backgrounds!):
-- BY WINDOW: rain-streaked glass, city lights, moonlight, morning sun
-- OUTDOOR: rooftop at dusk, balcony with plants, garden bench, riverside ghat
-- INDOOR: dimly lit café, old library, artist's studio, candlelit room
-- TRANSPORT: train window, car at night, boat deck
-- ATMOSPHERIC: foggy morning, rain background, sunset glow, blue hour
-
-LIGHTING OPTIONS:
-- Warm golden hour side light
-- Cool blue twilight ambient
-- Dramatic single source (lamp, candle, window)
-- Soft diffused overcast
-- Neon city glow from behind
-- Firelight/warm ambient
+TASK: Generate a portrait prompt using the EXACT parameters above.
+Match the emotional expression to the shayari's mood.
 
 RULES:
-1. Detect gender from Hindi verb forms (हूं/हूँ = masculine, हूँ with feminine context = female)
-2. Match character's expression and age to shayari's emotional weight
-3. Indian/South Asian person - vary skin tone, features, hairstyle
-4. Include interesting background element (not plain wall)
-5. Specify clothing style (kurta, casual shirt, shawl, etc.)
-6. Clear face visibility for video generation
-7. NO text/subtitles in image
+1. Use the EXACT gender, age, clothing, and setting provided
+2. Indian/South Asian person with varied skin tone and features
+3. Clear face visibility for video generation
+4. Cinematic lighting that matches the setting
+5. NO text/subtitles in image
 
 OUTPUT FORMAT (return ONLY this):
-A [specific age] year old Indian [man/woman] with [specific appearance - hair, features], wearing [specific clothing], [detailed emotional expression], [specific lighting from where], [interesting background setting]. Portrait shot, clear face, cinematic. No text in image.
+A {age_range} year old Indian {gender} with [specific hair and features], wearing {clothing}, [emotional expression matching shayari], {setting}, cinematic lighting. Portrait shot, clear face. No text in image.
 """.strip()
 
-# Ambient video prompt (beautiful Indian woman, dynamic cuts, emotional scenes)
+# Ambient video prompt - uses diversity params
 AMBIENT_VIDEO_PROMPT_TEMPLATE = """
-Analyze this Hindi Shayari and create a cinematic video prompt featuring a beautiful Indian woman.
+Create a cinematic video prompt featuring a beautiful Indian woman with the given parameters.
 
 SHAYARI:
 "{shayari}"
 
-CONTEXT ANALYSIS:
-- If mentions "दीया" or "दीप" → Diwali setting, lighting diyas
-- If mentions "याद" or "यादें" → nostalgic moments, looking at photos/memories
-- If mentions "बारिश" or "बरसात" → rain scenes, getting drenched, umbrella moments
-- If mentions "इंतज़ार" → waiting scenes, checking phone, looking at door
-- If mentions "ख्वाब" or "सपने" → dreamy sequences, lying in bed, stargazing
-- Otherwise → match the primary emotion with appropriate actions
+MANDATORY PARAMETERS (use these EXACTLY):
+- Setting/Location: {setting}
+- Woman's Hair: {hair}
+- Woman's Skin Tone: {skin}
+- Woman's Features: {features}
+- Woman's Outfit: {outfit}
+- Cut Style: {cut_style}
+- Cut Description: {cut_desc}
 
-CHARACTER CONSISTENCY:
-Beautiful Indian woman, early 20s, long flowing hair, expressive eyes
-SAME actress, SAME outfit throughout all cuts
+CONTEXT ANALYSIS (adjust actions based on shayari mood):
+- Romantic → shy smiles, playing with hair, dreamy gazes
+- Melancholic → looking away, touching face, wistful expressions
+- Nostalgic → looking at photos, distant stare, gentle sighs
+- Festive → lighting diyas, arranging flowers, celebratory gestures
+- Longing → waiting postures, checking phone/door, hopeful glances
 
-DYNAMIC 3-CUT SEQUENCES (total 8 seconds):
-
-FOR ROMANTIC/YEARNING SHAYARIS:
-[0-3s] Wide shot: Woman in vibrant saree on terrace, wind in hair, city lights behind
-[3-5s] Medium shot: Adjusting jasmine flowers in hair, shy smile, looking away
-[5-8s] Close-up: Eyes looking up dreamily, hand touching lips softly
-
-FOR SEPARATION/LONGING:
-[0-3s] Woman in churidar walking through rain, no umbrella, arms crossed
-[3-5s] Turning to look back over shoulder, rain-soaked hair sticking to face  
-[3-8s] Close shot: Hand wiping raindrops from face, melancholic expression
-
-FOR FESTIVE/CELEBRATION (if diya mentioned):
-[0-3s] Woman in lehenga lighting diyas in courtyard, Diwali decorations visible
-[3-5s] Mid shot: Arranging diyas in rangoli pattern, focused expression
-[5-8s] Looking up with diya in hands, warm glow on face, slight smile
-
-FOR MEMORY/NOSTALGIA:
-[0-3s] Woman in kurti sitting by window, old photo album in lap
-[3-6s] Fingers tracing over a photograph, wistful expression
-[6-8s] Looking out window, hand on glass, lost in thought
-
-URBAN MODERN SCENES:
-[0-3s] Woman in contemporary dress on rooftop café, hair flying
-[3-5s] Stirring coffee absently, checking phone
-[5-8s] Looking at city skyline, hand supporting chin
+TASK: Generate a video prompt using the EXACT parameters above.
+The woman should have {hair}, {skin}, {features}.
+She wears {outfit}.
+Location is {setting}.
+Use the {cut_style} cut style: {cut_desc}
 
 CINEMATIC ELEMENTS:
-- Golden hour lighting for warmth
-- Blue hour for melancholy  
-- Bokeh city lights in background
-- Rain/water elements for emotion
-- Practical lights (diyas, candles, fairy lights)
-- Wind movement in hair/clothes
-
-SETTINGS TO ROTATE:
-- Modern rooftop with city view
-- Traditional haveli courtyard
-- Rainy street or terrace
-- Café with large windows
-- Temple steps at dusk
-- Beach during sunset
-- Garden with flowers
-
-IMPORTANT: 
-- NO speaking or lip movement
+- Match lighting to setting and mood
 - Natural, graceful movements
-- Fashion-forward styling
 - Cinematic color grading
-- Smooth transitions between cuts
-- Visual continuity (same woman, same outfit)
+- Wind/rain/light effects where appropriate
+
+IMPORTANT:
+- NO speaking or lip movement
+- Visual continuity (same woman, same outfit throughout)
+- Smooth transitions if multiple cuts
 
 OUTPUT FORMAT (return ONLY this):
-Beautiful Indian woman in [specific outfit], [describe exact 3-cut sequence with timings], [overall lighting/mood], [specific location/setting]. 8 seconds, 9:16 vertical, cinematic cuts with smooth transitions. No dialogue, no audio.
+Beautiful Indian woman with {hair}, {skin}, {features}, wearing {outfit}, at {setting}. {cut_desc}. [Add emotional actions matching shayari mood]. 8 seconds, 9:16 vertical, cinematic. No dialogue, no audio.
 """.strip()
 
-# Human recital video prompt (person speaking)
-HUMAN_VIDEO_PROMPT_INTRO = """
-A single person delivers a quiet spoken monologue in natural Hindi.
+# Human recital video prompt (person speaking) - uses diversity params
+HUMAN_VIDEO_PROMPT_INTRO_TEMPLATE = """
+A single Indian {gender} delivers a quiet spoken monologue in natural Hindi.
 
-Voice style: everyday conversational speech, flat and non-melodic.
+CHARACTER: {age_range} years old, {age_desc}
+VOICE STYLE: {voice_texture}
 This is not singing, not recitation, and not a performance.
 Speech sounds like a personal voice note or inner thought.
 
@@ -674,8 +772,22 @@ def mix_audios_and_add_to_video(video_path: str, human_audio: str, bg_audio: str
     return result.returncode == 0
 
 
-def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: str) -> bool:
-    """Add bottom-positioned synced subtitles to video."""
+def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: str, text_color: str = None) -> tuple[bool, str, str]:
+    """Add synced subtitles at 75% from top (karaoke-style).
+
+    Returns: (success, color_hex, color_name) - whether it succeeded and which color was used
+    """
+    # Get random color if not specified
+    if text_color is None:
+        text_color, color_name = get_random_subtitle_color()
+    else:
+        # Find color name from hex
+        color_name = "Custom"
+        for c, n in SUBTITLE_COLORS:
+            if c == text_color:
+                color_name = n
+                break
+
     # Split words into lines (assume 5 words per line for short shayaris)
     mid = len(word_timestamps) // 2
     line1_words = word_timestamps[:mid]
@@ -683,24 +795,19 @@ def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: st
 
     if not line1_words or not line2_words:
         print("  Not enough words for lyrics sync")
-        return False
+        return False, text_color, color_name
 
     filters = []
 
-    # Add dark strip background starting at 33% from bottom
-    # For 9:16 video (1920 height), 33% from bottom = 0.67 * height
-    strip_height = 200
-    strip_y = "(ih*0.67)"  # 67% down from top = 33% from bottom
-    filters.append(f"drawbox=x=0:y={strip_y}:w=iw:h={strip_height}:color=black@0.65:t=fill")
+    # Add dark strip background at 75% from top
+    filters.append(f"drawbox=x=0:y=(ih*0.75)-130:w=iw:h=260:color=black@0.65:t=fill")
 
-    # Position text lines within the strip
-    # Center vertically within the strip
-    y1 = f"({strip_y}+60)"   # First line, 60px down from strip top
-    y2 = f"({strip_y}+130)"  # Second line, 130px down from strip top
+    y1 = "(h*0.75)-70"
+    y2 = "(h*0.75)+20"
 
     line2_start = line2_words[0]["start"]
 
-    # Line 1 words - progressive yellow highlight
+    # Line 1 words - progressive highlight
     for i, w in enumerate(line1_words):
         start = w["start"]
         prefix = " ".join([lw["word"] for lw in line1_words[:i+1]])
@@ -708,7 +815,7 @@ def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: st
 
         filters.append(
             f"drawtext=text='{prefix}':fontfile='{FONT_PATH}':fontsize={FONT_SIZE}:"
-            f"fontcolor={TEXT_COLOR}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
+            f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
             f"x=(w-text_w)/2:y={y1}:enable='between(t,{start},{next_start})'"
         )
 
@@ -716,11 +823,11 @@ def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: st
     full_line1 = " ".join([w["word"] for w in line1_words])
     filters.append(
         f"drawtext=text='{full_line1}':fontfile='{FONT_PATH}':fontsize={FONT_SIZE}:"
-        f"fontcolor={TEXT_COLOR}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
+        f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
         f"x=(w-text_w)/2:y={y1}:enable='gte(t,{line2_start})'"
     )
 
-    # Line 2 words - progressive yellow highlight
+    # Line 2 words - progressive highlight
     for i, w in enumerate(line2_words):
         start = w["start"]
         prefix = " ".join([lw["word"] for lw in line2_words[:i+1]])
@@ -728,7 +835,7 @@ def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: st
 
         filters.append(
             f"drawtext=text='{prefix}':fontfile='{FONT_PATH}':fontsize={FONT_SIZE}:"
-            f"fontcolor={TEXT_COLOR}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
+            f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
             f"x=(w-text_w)/2:y={y2}:enable='between(t,{start},{next_start})'"
         )
 
@@ -737,7 +844,7 @@ def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: st
     last_word_start = line2_words[-1]["start"]
     filters.append(
         f"drawtext=text='{full_line2}':fontfile='{FONT_PATH}':fontsize={FONT_SIZE}:"
-        f"fontcolor={TEXT_COLOR}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
+        f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
         f"x=(w-text_w)/2:y={y2}:enable='gte(t,{last_word_start})'"
     )
 
@@ -747,6 +854,7 @@ def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: st
         "ffmpeg", "-y",
         "-i", video_path,
         "-vf", filter_str,
+        "-c:v", "libx264",
         "-c:a", "copy",
         output_path
     ]
@@ -754,27 +862,64 @@ def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: st
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print(f"  ffmpeg error: {result.stderr[-500:]}")
-    return result.returncode == 0
+    return result.returncode == 0, text_color, color_name
 
 
 # =============================================================================
 # PROMPT GENERATORS
 # =============================================================================
 
-def generate_human_portrait_prompt(shayari: str) -> str:
-    """Generate prompt for human_recital_video.mp4 (character portrait)."""
-    prompt = HUMAN_PORTRAIT_PROMPT_TEMPLATE.format(shayari=shayari)
-    return call_gemini(prompt)
+def generate_human_portrait_prompt(shayari: str, char_params: dict = None) -> tuple[str, dict]:
+    """Generate prompt for human_recital_video.mp4 (character portrait).
+
+    Returns: (prompt, char_params) - the prompt and the character parameters used
+    """
+    if char_params is None:
+        char_params = get_random_recital_character()
+
+    prompt = HUMAN_PORTRAIT_PROMPT_TEMPLATE.format(
+        shayari=shayari,
+        gender=char_params["gender"],
+        age_range=char_params["age_range"],
+        age_desc=char_params["age_desc"],
+        voice_texture=char_params["voice_texture"],
+        clothing=char_params["clothing"],
+        setting=char_params["setting"],
+    )
+    result = call_gemini(prompt)
+    return result, char_params
 
 
-def generate_ambient_video_prompt(shayari: str) -> str:
-    """Generate prompt for ambient/scenic video."""
-    prompt = AMBIENT_VIDEO_PROMPT_TEMPLATE.format(shayari=shayari)
-    return call_gemini(prompt)
+def generate_ambient_video_prompt(shayari: str, ambient_params: dict = None) -> tuple[str, dict]:
+    """Generate prompt for ambient/scenic video.
+
+    Returns: (prompt, ambient_params) - the prompt and the ambient parameters used
+    """
+    if ambient_params is None:
+        ambient_params = get_random_ambient_params()
+
+    prompt = AMBIENT_VIDEO_PROMPT_TEMPLATE.format(
+        shayari=shayari,
+        setting=ambient_params["setting"],
+        hair=ambient_params["hair"],
+        skin=ambient_params["skin"],
+        features=ambient_params["features"],
+        outfit=ambient_params["outfit"],
+        cut_style=ambient_params["cut_style"],
+        cut_desc=ambient_params["cut_desc"],
+    )
+    result = call_gemini(prompt)
+    return result, ambient_params
 
 
-def generate_human_video_prompt(shayari: str) -> str:
-    """Generate VEO prompt for human recital video."""
+def generate_human_video_prompt(shayari: str, char_params: dict = None) -> tuple[str, dict]:
+    """Generate VEO prompt for human recital video.
+
+    Returns: (prompt, char_params) - the prompt and the character parameters used
+    """
+    if char_params is None:
+        char_params = get_random_recital_character()
+
     # Convert shayari for speech
     prose_text = shayari.replace(",", "…").replace("।", "।").replace("!", "…")
     if not prose_text.endswith("।") and not prose_text.endswith("…"):
@@ -788,7 +933,15 @@ def generate_human_video_prompt(shayari: str) -> str:
         lines = timeline.split("\n")
         timeline = "\n".join(lines[1:-1]).strip()
 
-    return f"{HUMAN_VIDEO_PROMPT_INTRO}\n{timeline}\n{HUMAN_VIDEO_PROMPT_OUTRO}"
+    # Build intro with character params
+    intro = HUMAN_VIDEO_PROMPT_INTRO_TEMPLATE.format(
+        gender=char_params["gender"],
+        age_range=char_params["age_range"],
+        age_desc=char_params["age_desc"],
+        voice_texture=char_params["voice_texture"],
+    )
+
+    return f"{intro}\n{timeline}\n{HUMAN_VIDEO_PROMPT_OUTRO}", char_params
 
 
 def get_word_timestamps(audio_path: str) -> list:
@@ -836,10 +989,16 @@ def load_data(input_path: str) -> tuple[list, Path]:
     return data, output_dir
 
 
-def save_data(data: list, input_path: str):
-    """Save updated data back to input file."""
+def save_data(data: list, input_path: str, output_dir: Path = None):
+    """Save updated data back to input file and optionally to output folder."""
     with open(input_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+    # Also save to output folder for reference
+    if output_dir:
+        output_json_path = output_dir / "generation_config.json"
+        with open(output_json_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def run_pipeline(
@@ -903,18 +1062,26 @@ def run_pipeline(
         if force or not Path(human_recital_raw).exists():
             print("  → Generating human_recital_video.mp4 (veo3.1-fast with audio)...")
             try:
+                # Get or generate character params for consistency
+                char_params = item.get("recital_character_params")
+                if force or not char_params:
+                    char_params = get_random_recital_character()
+                    item["recital_character_params"] = char_params
+                    print(f"    → Character: {char_params['gender']}, {char_params['age_range']}, {char_params['voice_texture'][:30]}...")
+                    save_data(data, input_path, base_output_dir)
+
                 # Generate human video prompt (timeline for speaking)
                 if force or not item.get("human_video_prompt"):
                     print("    → Generating human video prompt...")
-                    item["human_video_prompt"] = generate_human_video_prompt(shayari)
-                    save_data(data, input_path)
+                    item["human_video_prompt"], _ = generate_human_video_prompt(shayari, char_params)
+                    save_data(data, input_path, base_output_dir)
                     time.sleep(GEMINI_DELAY)
 
                 # Generate portrait image prompt (character for video)
                 if force or not item.get("human_portrait_prompt"):
                     print("    → Generating character portrait prompt...")
-                    item["human_portrait_prompt"] = generate_human_portrait_prompt(shayari)
-                    save_data(data, input_path)
+                    item["human_portrait_prompt"], _ = generate_human_portrait_prompt(shayari, char_params)
+                    save_data(data, input_path, base_output_dir)
                     time.sleep(GEMINI_DELAY)
 
                 # Generate character portrait image
@@ -926,7 +1093,7 @@ def run_pipeline(
                     print(f"    → Generating human recital video (veo3.1-fast with audio)...")
                     print(f"    → Prompt: {item['human_video_prompt'][:80]}...")
 
-                    if generate_video_from_image(human_portrait_path, item["human_video_prompt"], 
+                    if generate_video_from_image(human_portrait_path, item["human_video_prompt"],
                                                  human_recital_raw, with_audio=True):
                         print(f"    ✓ Human recital raw video generated")
 
@@ -956,10 +1123,20 @@ def run_pipeline(
         if force or not Path(ambient_video_path).exists():
             print("  → Generating ambient video (veo3.1 without audio)...")
             try:
+                # Get or generate ambient params for consistency
+                ambient_params = item.get("ambient_video_params")
+                if force or not ambient_params:
+                    ambient_params = get_random_ambient_params()
+                    item["ambient_video_params"] = ambient_params
+                    print(f"    → Setting: {ambient_params['setting'][:40]}...")
+                    print(f"    → Woman: {ambient_params['hair']}, {ambient_params['outfit'][:30]}...")
+                    print(f"    → Cut style: {ambient_params['cut_style']}")
+                    save_data(data, input_path, base_output_dir)
+
                 if force or not item.get("ambient_video_prompt"):
                     print("    → Generating ambient video prompt...")
-                    item["ambient_video_prompt"] = generate_ambient_video_prompt(shayari)
-                    save_data(data, input_path)
+                    item["ambient_video_prompt"], _ = generate_ambient_video_prompt(shayari, ambient_params)
+                    save_data(data, input_path, base_output_dir)
                     time.sleep(GEMINI_DELAY)
 
                 print(f"    → Prompt: {item['ambient_video_prompt'][:80]}...")
@@ -1003,25 +1180,27 @@ def run_pipeline(
                                 print(f"    ✓ Got {len(word_timestamps)} word timestamps")
                         
                         if word_timestamps:
-                            print("    → Adding centered synced subtitles...")
-                            if add_synced_subtitles(temp_video, word_timestamps, ambient_recital_path):
+                            print("    → Adding synced subtitles at 75%...")
+                            success, color_hex, color_name = add_synced_subtitles(temp_video, word_timestamps, ambient_recital_path)
+                            if success:
                                 formats["ambient_video"] = ambient_recital_path
-                                print(f"  ✓ ambient_video.mp4 saved with synced subtitles")
-                                save_data(data, input_path)
+                                item["subtitle_color"] = {"hex": color_hex, "name": color_name}
+                                print(f"  ✓ ambient_video.mp4 saved with {color_name} subtitles")
+                                save_data(data, input_path, base_output_dir)
                             else:
                                 # Fallback: use video without subtitles
                                 import shutil
                                 shutil.copy(temp_video, ambient_recital_path)
                                 formats["ambient_video"] = ambient_recital_path
                                 print(f"  ✓ ambient_video.mp4 saved (subtitle addition failed)")
-                                save_data(data, input_path)
+                                save_data(data, input_path, base_output_dir)
                         else:
                             # No timestamps, use video without subtitles
                             import shutil
                             shutil.copy(temp_video, ambient_recital_path)
                             formats["ambient_video"] = ambient_recital_path
                             print(f"  ✓ ambient_video.mp4 saved (no subtitles)")
-                            save_data(data, input_path)
+                            save_data(data, input_path, base_output_dir)
                         
                         # Clean up temp file
                         Path(temp_video).unlink(missing_ok=True)

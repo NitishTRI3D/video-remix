@@ -102,9 +102,12 @@ SUBTITLE_COLORS = [
 # =============================================================================
 
 # Human recital character diversity
-RECITAL_GENDERS = ["man", "woman"]
+RECITAL_GENDERS = ["man", "man","man","man"]
 
 RECITAL_AGE_GROUPS = [
+    ("young", "22-28", "youthful energy, fresh face"),
+    ("young", "22-28", "youthful energy, fresh face"),
+    ("young", "22-28", "youthful energy, fresh face"),
     ("young", "22-28", "youthful energy, fresh face"),
     ("mature", "30-40", "confident, experienced look"),
     ("middle-aged", "42-52", "wise, contemplative expression"),
@@ -306,23 +309,36 @@ Beautiful Indian woman with {hair}, {skin}, {features}, wearing {outfit}, at {se
 
 # Human recital video prompt (person speaking) - uses diversity params
 HUMAN_VIDEO_PROMPT_INTRO_TEMPLATE = """
-A single Indian {gender} delivers a quiet spoken monologue in natural Hindi.
+CRITICAL: THIS IS SPOKEN WORD ONLY. ABSOLUTELY NO SINGING.
+
+A single Indian {gender} speaks a Hindi shayari in a FLAT, MONOTONE voice.
 
 CHARACTER: {age_range} years old, {age_desc}
-VOICE STYLE: {voice_texture}
-This is not singing, not recitation, and not a performance.
-Speech sounds like a personal voice note or inner thought.
+VOICE DELIVERY: {voice_texture}
+
+MANDATORY VOICE RULES:
+- SPOKEN like reading a personal diary entry or sending a voice message
+- MONOTONE - no musical pitch changes, no melody whatsoever
+- FLAT emotional delivery with subtle intensity in eyes only
+- Natural speech rhythm with meaningful PAUSES between phrases
+- NO singing, NO humming, NO melodic intonation
+- NO stretching of words, NO rhythmic patterns
+- Think: confessing to a friend late at night, not performing
 
 Avoid any text/subtitles in the video.
 
-[0:00–0:00.5] small breath, eyes settle
+[0:00–0:00.5] small breath, eyes settle, prepares to speak
 """.strip()
 
 HUMAN_VIDEO_PROMPT_OUTRO = """
-[0:07.5–0:08.0] soft exhale, gaze shifts slightly
+[0:07.5–0:08.0] soft exhale, gaze drops slightly
 
-No music. No melody. No rhythmic stretching of words.
-Natural imperfect speech delivery.
+VOICE REMINDER: Completely flat spoken delivery throughout.
+- NO music, NO melody, NO singing whatsoever
+- NO rhythmic stretching or musical intonation
+- Plain conversational Hindi speech
+- Emotion conveyed through pauses and facial expression, NOT voice melody
+
 Visual consistency unchanged: clothing, hair, lighting, background.
 Duration: 8 seconds.
 """.strip()
@@ -330,27 +346,30 @@ Duration: 8 seconds.
 VIDEO_TIMELINE_TEMPLATE = """
 Generate ONLY the timeline portion for a VEO 3.1 video prompt.
 
+IMPORTANT: This is SPOKEN shayari, NOT sung. Flat monotone voice like reading aloud.
+
 TEXT TO SPEAK (exact words, do not change):
 "{shayari}"
 
 YOUR TASK:
 Generate timeline entries from [0:00.5] to [0:07.5] (7 seconds total).
-Split the text naturally with pauses between phrases.
+Split the text naturally with MEANINGFUL PAUSES between phrases.
 
 FORMAT (follow exactly):
-[0:00.5–0:XX.X] "first phrase here…" same tone
-[0:XX.X–0:XX.X] brief pause
-[0:XX.X–0:XX.X] "next phrase…" no change in tone
+[0:00.5–0:XX.X] speaks flatly: "first phrase here…" monotone, no melody
+[0:XX.X–0:XX.X] pause, slight breath
+[0:XX.X–0:XX.X] speaks flatly: "next phrase…" same flat tone
 ... continue until 0:07.5
 
 RULES:
 - Each line starts with timestamp [0:XX.X–0:XX.X]
-- Speech lines have Hindi text in quotes, end with "same tone" or "no change in tone"
-- Pause lines are short: "brief pause" or "small breath"
-- Speech pace: ~2.5 words per second
-- Include 2-3 short pauses (0.3-0.5s each)
+- Speech lines: "speaks flatly:" followed by Hindi text in quotes, then "monotone, no melody"
+- Pause lines: "pause, slight breath" or "pause, eyes shift"
+- Speech pace: ~2 words per second (slower, more deliberate)
+- Include 3-4 meaningful pauses (0.4-0.6s each) for emotional weight
 - Final timestamp must end at exactly 0:07.5
 - Use the EXACT Hindi text provided
+- NO singing instructions, NO melodic descriptions
 
 Return ONLY the timeline lines, nothing else.
 """.strip()
@@ -1148,70 +1167,123 @@ def run_pipeline(
                 print(f"    ✗ Ambient video error: {e}")
 
         # =====================================================================
-        # STEP 3: Mix audio and create final video
+        # STEP 3: Mix audio and create final videos
         # =====================================================================
+        # Get random background audio (shared for both outputs)
+        bg_audio = None
+        mixed_audio_path = str(intermediate_dir / "mixed_audio.mp3")
+        word_timestamps = []
+
+        if Path(human_audio_path).exists():
+            # Get word timestamps (needed for both videos)
+            if Path(word_timestamps_path).exists():
+                with open(word_timestamps_path, "r") as f:
+                    word_timestamps = json.load(f)
+            else:
+                print("    → Getting word timestamps for synced subtitles...")
+                word_timestamps = get_word_timestamps(human_audio_path)
+                if word_timestamps:
+                    with open(word_timestamps_path, "w") as f:
+                        json.dump(word_timestamps, f, ensure_ascii=False, indent=2)
+                    print(f"    ✓ Got {len(word_timestamps)} word timestamps")
+
+            # Get background audio
+            bg_audio = get_random_audio_from_library()
+
+        # ---------------------------------------------------------------------
+        # OUTPUT 1: ambient_video.mp4 (ambient video + mixed audio + subtitles)
+        # ---------------------------------------------------------------------
         if Path(ambient_video_path).exists() and Path(human_audio_path).exists():
             if force or not formats.get("ambient_video"):
-                print("  → Creating final ambient video with mixed audio...")
-                
-                # Get random background audio
-                bg_audio = get_random_audio_from_library()
-                
+                print("  → Creating ambient_video.mp4...")
+
                 if bg_audio:
-                    # First create video with mixed audio
                     temp_video = str(intermediate_dir / "ambient_with_mixed_audio.mp4")
                     print("    → Mixing audio (80% human recital + 20% background music)...")
-                    
-                    if mix_audios_and_add_to_video(ambient_video_path, human_audio_path, 
+
+                    if mix_audios_and_add_to_video(ambient_video_path, human_audio_path,
                                                     bg_audio, temp_video):
                         print("    ✓ Audio mixed successfully")
-                        
-                        # Get word timestamps for synced subtitles
-                        word_timestamps = []
-                        if Path(word_timestamps_path).exists():
-                            with open(word_timestamps_path, "r") as f:
-                                word_timestamps = json.load(f)
-                        else:
-                            print("    → Getting word timestamps for synced subtitles...")
-                            word_timestamps = get_word_timestamps(human_audio_path)
-                            if word_timestamps:
-                                with open(word_timestamps_path, "w") as f:
-                                    json.dump(word_timestamps, f, ensure_ascii=False, indent=2)
-                                print(f"    ✓ Got {len(word_timestamps)} word timestamps")
-                        
+
                         if word_timestamps:
                             print("    → Adding synced subtitles at 75%...")
                             success, color_hex, color_name = add_synced_subtitles(temp_video, word_timestamps, ambient_recital_path)
                             if success:
                                 formats["ambient_video"] = ambient_recital_path
-                                item["subtitle_color"] = {"hex": color_hex, "name": color_name}
+                                item["ambient_subtitle_color"] = {"hex": color_hex, "name": color_name}
                                 print(f"  ✓ ambient_video.mp4 saved with {color_name} subtitles")
                                 save_data(data, input_path, base_output_dir)
                             else:
-                                # Fallback: use video without subtitles
                                 import shutil
                                 shutil.copy(temp_video, ambient_recital_path)
                                 formats["ambient_video"] = ambient_recital_path
                                 print(f"  ✓ ambient_video.mp4 saved (subtitle addition failed)")
                                 save_data(data, input_path, base_output_dir)
                         else:
-                            # No timestamps, use video without subtitles
                             import shutil
                             shutil.copy(temp_video, ambient_recital_path)
                             formats["ambient_video"] = ambient_recital_path
                             print(f"  ✓ ambient_video.mp4 saved (no subtitles)")
                             save_data(data, input_path, base_output_dir)
-                        
-                        # Clean up temp file
+
                         Path(temp_video).unlink(missing_ok=True)
                     else:
-                        print("  ✗ Audio mixing failed")
+                        print("  ✗ Audio mixing failed for ambient_video")
                 else:
-                    print("  ✗ No background audio available in library")
+                    print("  ✗ No background audio available")
             else:
                 print("  ⏭ ambient_video.mp4 exists, skipping")
         else:
-            print("  ⏭ Missing ambient_video or human_audio, skipping final video")
+            print("  ⏭ Missing ambient_video or human_audio, skipping ambient_video.mp4")
+
+        # ---------------------------------------------------------------------
+        # OUTPUT 2: recital_video.mp4 (human recital video + mixed audio + subtitles)
+        # ---------------------------------------------------------------------
+        recital_output_path = str(output_dir / "recital_video.mp4")
+
+        if Path(human_recital_raw).exists() and Path(human_audio_path).exists():
+            if force or not formats.get("recital_video"):
+                print("  → Creating recital_video.mp4...")
+
+                if bg_audio:
+                    temp_video = str(intermediate_dir / "recital_with_mixed_audio.mp4")
+                    print("    → Mixing audio (80% human recital + 20% background music)...")
+
+                    if mix_audios_and_add_to_video(human_recital_raw, human_audio_path,
+                                                    bg_audio, temp_video):
+                        print("    ✓ Audio mixed successfully")
+
+                        if word_timestamps:
+                            # Use a DIFFERENT subtitle color for recital video
+                            print("    → Adding synced subtitles at 75% (different color)...")
+                            success, color_hex, color_name = add_synced_subtitles(temp_video, word_timestamps, recital_output_path)
+                            if success:
+                                formats["recital_video"] = recital_output_path
+                                item["recital_subtitle_color"] = {"hex": color_hex, "name": color_name}
+                                print(f"  ✓ recital_video.mp4 saved with {color_name} subtitles")
+                                save_data(data, input_path, base_output_dir)
+                            else:
+                                import shutil
+                                shutil.copy(temp_video, recital_output_path)
+                                formats["recital_video"] = recital_output_path
+                                print(f"  ✓ recital_video.mp4 saved (subtitle addition failed)")
+                                save_data(data, input_path, base_output_dir)
+                        else:
+                            import shutil
+                            shutil.copy(temp_video, recital_output_path)
+                            formats["recital_video"] = recital_output_path
+                            print(f"  ✓ recital_video.mp4 saved (no subtitles)")
+                            save_data(data, input_path, base_output_dir)
+
+                        Path(temp_video).unlink(missing_ok=True)
+                    else:
+                        print("  ✗ Audio mixing failed for recital_video")
+                else:
+                    print("  ✗ No background audio available")
+            else:
+                print("  ⏭ recital_video.mp4 exists, skipping")
+        else:
+            print("  ⏭ Missing human_recital_raw or human_audio, skipping recital_video.mp4")
 
         print()
 

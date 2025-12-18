@@ -309,36 +309,23 @@ Beautiful Indian woman with {hair}, {skin}, {features}, wearing {outfit}, at {se
 
 # Human recital video prompt (person speaking) - uses diversity params
 HUMAN_VIDEO_PROMPT_INTRO_TEMPLATE = """
-CRITICAL: THIS IS SPOKEN WORD ONLY. ABSOLUTELY NO SINGING.
-
-A single Indian {gender} speaks a Hindi shayari in a FLAT, MONOTONE voice.
+A single Indian {gender} delivers a quiet spoken monologue in natural Hindi.
 
 CHARACTER: {age_range} years old, {age_desc}
-VOICE DELIVERY: {voice_texture}
-
-MANDATORY VOICE RULES:
-- SPOKEN like reading a personal diary entry or sending a voice message
-- MONOTONE - no musical pitch changes, no melody whatsoever
-- FLAT emotional delivery with subtle intensity in eyes only
-- Natural speech rhythm with meaningful PAUSES between phrases
-- NO singing, NO humming, NO melodic intonation
-- NO stretching of words, NO rhythmic patterns
-- Think: confessing to a friend late at night, not performing
+Voice style: {voice_texture}, everyday conversational speech, flat and non-melodic.
+This is not singing, not recitation, and not a performance.
+Speech sounds like a personal voice note or inner thought.
 
 Avoid any text/subtitles in the video.
 
-[0:00–0:00.5] small breath, eyes settle, prepares to speak
+[0:00–0:00.5] small breath, eyes settle
 """.strip()
 
 HUMAN_VIDEO_PROMPT_OUTRO = """
-[0:07.5–0:08.0] soft exhale, gaze drops slightly
+[0:07.5–0:08.0] soft exhale, gaze shifts slightly
 
-VOICE REMINDER: Completely flat spoken delivery throughout.
-- NO music, NO melody, NO singing whatsoever
-- NO rhythmic stretching or musical intonation
-- Plain conversational Hindi speech
-- Emotion conveyed through pauses and facial expression, NOT voice melody
-
+No music. No melody. No rhythmic stretching of words.
+Natural imperfect speech delivery.
 Visual consistency unchanged: clothing, hair, lighting, background.
 Duration: 8 seconds.
 """.strip()
@@ -346,30 +333,27 @@ Duration: 8 seconds.
 VIDEO_TIMELINE_TEMPLATE = """
 Generate ONLY the timeline portion for a VEO 3.1 video prompt.
 
-IMPORTANT: This is SPOKEN shayari, NOT sung. Flat monotone voice like reading aloud.
-
 TEXT TO SPEAK (exact words, do not change):
 "{shayari}"
 
 YOUR TASK:
 Generate timeline entries from [0:00.5] to [0:07.5] (7 seconds total).
-Split the text naturally with MEANINGFUL PAUSES between phrases.
+Split the text naturally with pauses between phrases.
 
 FORMAT (follow exactly):
-[0:00.5–0:XX.X] speaks flatly: "first phrase here…" monotone, no melody
-[0:XX.X–0:XX.X] pause, slight breath
-[0:XX.X–0:XX.X] speaks flatly: "next phrase…" same flat tone
+[0:00.5–0:XX.X] "first phrase here" same tone
+[0:XX.X–0:XX.X] brief pause
+[0:XX.X–0:XX.X] "next phrase" no change in tone
 ... continue until 0:07.5
 
 RULES:
 - Each line starts with timestamp [0:XX.X–0:XX.X]
-- Speech lines: "speaks flatly:" followed by Hindi text in quotes, then "monotone, no melody"
-- Pause lines: "pause, slight breath" or "pause, eyes shift"
-- Speech pace: ~2 words per second (slower, more deliberate)
-- Include 3-4 meaningful pauses (0.4-0.6s each) for emotional weight
+- Speech lines have Hindi text in quotes, end with "same tone" or "no change in tone"
+- Pause lines are short: "brief pause" or "small breath"
+- Speech pace: ~2.5 words per second
+- Include 2-3 short pauses (0.3-0.5s each)
 - Final timestamp must end at exactly 0:07.5
-- Use the EXACT Hindi text provided
-- NO singing instructions, NO melodic descriptions
+- Use the EXACT Hindi text provided, no ellipsis (...)
 
 Return ONLY the timeline lines, nothing else.
 """.strip()

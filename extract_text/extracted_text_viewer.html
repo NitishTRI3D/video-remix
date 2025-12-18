@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hindi Text Extraction Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .upload-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .file-upload {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .file-input-label:hover {
+            background: #5568d3;
+        }
+
+        .file-name {
+            color: #495057;
+            font-size: 0.9em;
+        }
+
+        .stats {
+            margin-top: 15px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.95em;
+        }
+
+        .table-container {
+            padding: 30px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .image-cell {
+            width: 250px;
+        }
+
+        .image-cell img {
+            width: 100%;
+            max-width: 250px;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .image-cell img:hover {
+            transform: scale(1.05);
+        }
+
+        .image-cell img.error {
+            width: 250px;
+            height: 188px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 0.85em;
+        }
+
+        .text-cell {
+            max-width: 600px;
+            min-width: 300px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #212529;
+        }
+
+        .param-cell {
+            font-size: 0.9em;
+            color: #495057;
+        }
+
+        .param-label {
+            font-weight: 600;
+            color: #212529;
+            margin-right: 5px;
+        }
+
+
+
+        .number {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            cursor: pointer;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90%;
+            max-height: 90%;
+        }
+
+        .modal-content img {
+            max-width: 100%;
+            max-height: 90vh;
+            border-radius: 8px;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-modal:hover {
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Hindi Text Extraction Viewer</h1>
+            <p>Upload your JSON file to view extracted text and images</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="file-upload">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept=".json" />
+                    <label for="fileInput" class="file-input-label">📁 Choose JSON File</label>
+                </div>
+                <span class="file-name" id="fileName">No file selected</span>
+            </div>
+            <div class="stats" id="stats"></div>
+        </div>
+
+        <div class="table-container" id="tableContainer">
+            <div class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                <h2>Upload a JSON file to get started</h2>
+                <p>Select a JSON file containing extracted text data</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="imageModal" class="modal">
+        <span class="close-modal">&times;</span>
+        <div class="modal-content">
+            <img id="modalImage" src="" alt="Full size image">
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const stats = document.getElementById('stats');
+        const tableContainer = document.getElementById('tableContainer');
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const closeModal = document.querySelector('.close-modal');
+
+        fileInput.addEventListener('change', handleFileUpload);
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            fileName.textContent = file.name;
+            stats.textContent = 'Loading...';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (Array.isArray(data)) {
+                        renderTable(data);
+                    } else {
+                        throw new Error('JSON must be an array');
+                    }
+                } catch (error) {
+                    stats.textContent = `Error: ${error.message}`;
+                    tableContainer.innerHTML = `<div class="empty-state"><h2>Error parsing JSON</h2><p>${error.message}</p></div>`;
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function renderTable(data) {
+            if (data.length === 0) {
+                tableContainer.innerHTML = '<div class="empty-state"><h2>No data found</h2><p>The JSON file is empty</p></div>';
+                stats.textContent = '0 records';
+                return;
+            }
+
+            stats.textContent = `${data.length} record${data.length !== 1 ? 's' : ''} loaded`;
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Extracted Text (Hindi)</th>
+                            <th>Date</th>
+                            <th>Views</th>
+                            <th>Engagement</th>
+                            <th>Likes</th>
+                            <th>Shares</th>
+                            <th>Favorites</th>
+                            <th>Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.forEach((item, index) => {
+                html += `
+                    <tr>
+                        <td class="image-cell">
+                            <img 
+                                src="${escapeHtml(item.cdnUrl)}" 
+                                alt="Post ${item.PostID}"
+                                onerror="this.onerror=null; this.className='error'; this.alt='Image failed to load';"
+                                onclick="openModal('${escapeHtml(item.cdnUrl)}')"
+                            >
+                        </td>
+                        <td class="text-cell">${escapeHtml(item.extracted_text || 'NO_TEXT_FOUND')}</td>
+                        <td class="param-cell">${escapeHtml(item.Date || 'N/A')}</td>
+                        <td class="param-cell"><span class="number">${formatNumber(item.Views)}</span></td>
+                        <td class="param-cell"><span class="number">${formatNumber(item.engagement)}</span></td>
+                        <td class="param-cell"><span class="number">${formatNumber(item.Likes)}</span></td>
+                        <td class="param-cell"><span class="number">${formatNumber(item.Shares)}</span></td>
+                        <td class="param-cell"><span class="number">${formatNumber(item.Favorites)}</span></td>
+                        <td class="param-cell"><span class="number">${formatNumber(item.Comments)}</span></td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            tableContainer.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '0';
+            return Number(num).toLocaleString();
+        }
+
+        function openModal(imageUrl) {
+            modalImage.src = imageUrl;
+            imageModal.style.display = 'block';
+        }
+
+        closeModal.addEventListener('click', function() {
+            imageModal.style.display = 'none';
+        });
+
+        imageModal.addEventListener('click', function(e) {
+            if (e.target === imageModal) {
+                imageModal.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && imageModal.style.display === 'block') {
+                imageModal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

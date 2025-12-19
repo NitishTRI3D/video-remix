@@ -50,6 +50,7 @@ project_id = os.getenv("PROJECT_ID")
 location = os.getenv("LOCATION", "us-central1")
 PROJECT_ID = project_id
 LOCATION = location
+ELEVEN_LABS_KEY = os.getenv("ELEVEN_LABS_KEY")
 
 if not project_id:
     raise ValueError("PROJECT_ID is not set")
@@ -58,7 +59,7 @@ if not location:
 
 # Models
 GEMINI_MODEL = "gemini-2.0-flash"
-GEMINI_PRO_MODEL = "gemini-2.0-flash"  # For audio transcription
+GEMINI_PRO_MODEL = "gemini-2.5-pro"  # For audio transcription - more accurate timestamps
 IMAGE_MODEL = "gemini-2.5-flash-image"  # Nano Banana
 VEO_MODEL = "veo-3.1-fast-generate-preview"
 
@@ -78,10 +79,13 @@ VIDEO_DURATION_SECONDS = 8
 VIDEO_PERSON_GENERATION = "allow_adult"
 
 # Text overlay settings
-FONT_PATH = "/System/Library/Fonts/Kohinoor.ttc"
-FONT_SIZE = 60  # Increased for better readability at bottom
+FONT_PATH = "/System/Library/Fonts/Supplemental/Devanagari Sangam MN.ttc"
+BASE_FONT_SIZE = 56  # Base font size, will be adjusted dynamically
+MAX_FONT_SIZE = 60
+MIN_FONT_SIZE = 36
 BORDER_COLOR = "black"
 BORDER_WIDTH = 3  # Thicker border for better contrast
+HORIZONTAL_MARGIN = 40  # Pixels margin on each side
 
 # Subtitle color options (10 colors)
 SUBTITLE_COLORS = [
@@ -193,6 +197,25 @@ def get_random_subtitle_color():
     """Get a random subtitle color."""
     color, name = random.choice(SUBTITLE_COLORS)
     return color, name
+
+
+def calculate_font_size(text: str, video_width: int = 1080) -> int:
+    """Calculate appropriate font size based on text length and video width."""
+    # Account for margin on both sides
+    available_width = video_width - (2 * HORIZONTAL_MARGIN)
+    
+    # Start with base font size
+    font_size = BASE_FONT_SIZE
+    
+    # Estimate text width (for Devanagari, characters are wider, so use 0.7 multiplier)
+    estimated_width = len(text) * font_size * 0.7
+    
+    # Adjust font size if text is too wide
+    if estimated_width > available_width:
+        font_size = int(available_width / (len(text) * 0.7))
+        font_size = max(MIN_FONT_SIZE, min(font_size, MAX_FONT_SIZE))
+    
+    return font_size
 
 def get_random_recital_character():
     """Get random parameters for human recital character."""
@@ -775,9 +798,12 @@ def mix_audios_and_add_to_video(video_path: str, human_audio: str, bg_audio: str
     return result.returncode == 0
 
 
-def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: str, text_color: str = None) -> tuple[bool, str, str]:
-    """Add synced subtitles at 75% from top (karaoke-style).
-
+def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: str, text_color: str = None, shayari_text: str = None, sync_mode: str = "line") -> tuple[bool, str, str]:
+    """Add synced subtitles at 75% from top.
+    
+    Args:
+        sync_mode: "line" for line-based display, "word" for word-by-word lyrical sync
+    
     Returns: (success, color_hex, color_name) - whether it succeeded and which color was used
     """
     # Get random color if not specified
@@ -791,13 +817,79 @@ def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: st
                 color_name = n
                 break
 
-    # Split words into lines (assume 5 words per line for short shayaris)
-    mid = len(word_timestamps) // 2
-    line1_words = word_timestamps[:mid]
-    line2_words = word_timestamps[mid:]
+    # Split words based on shayari text line breaks if provided
+    if shayari_text and '\n' in shayari_text:
+        # Parsing lines from shayari text with newline
+        # Split shayari by line breaks
+        lines = shayari_text.split('\n')
+        # Found lines with word counts
+        line_words_list = []
+        
+        # Create a list of all words from timestamps for matching
+        timestamp_words = [w["word"] for w in word_timestamps]
+        current_ts_idx = 0
+        
+        for line_text in lines:
+            if not line_text.strip():
+                continue
+                
+            # Get words in this line (remove all types of quotes first)
+            clean_line = line_text.strip()
+            for quote in ['"', '"', '"', "'", "'", "'"]:
+                clean_line = clean_line.replace(quote, '')
+            line_words = clean_line.split()
+            line_timestamps = []
+            
+            # Match each word in the line with timestamps
+            for word in line_words:
+                # Clean the word for comparison (remove punctuation at edges)
+                clean_word = word.strip('।,!.…')
+                
+                # Find this word in remaining timestamps
+                found = False
+                for i in range(current_ts_idx, len(word_timestamps)):
+                    ts_word = word_timestamps[i]["word"]
+                    # Clean timestamp word for comparison
+                    clean_ts_word = ts_word.strip('।,!.…')
+                    
+                    # Check if words match (case insensitive)
+                    if clean_word.lower() == clean_ts_word.lower():
+                        line_timestamps.append(word_timestamps[i])
+                        current_ts_idx = i + 1
+                        found = True
+                        break
+                
+                if not found:
+                    print(f"    → Warning: Could not find timestamp for word: {word}")
+            
+            if line_timestamps:
+                line_words_list.append(line_timestamps)
+        
+        # Use the split based on actual line breaks
+        # Use the split based on actual line breaks
+        if len(line_words_list) >= 2:
+            line1_words = line_words_list[0]
+            line2_words = line_words_list[1]
+            # Line 1 and Line 2 properly split based on newline
+        elif len(line_words_list) == 1:
+            line1_words = line_words_list[0]
+            line2_words = []
+            # Single line with all words
+        else:
+            # Fallback to default split
+            # No line splits found, using midpoint split
+            mid = len(word_timestamps) // 2
+            line1_words = word_timestamps[:mid]
+            line2_words = word_timestamps[mid:]
+    else:
+        # Default split if no shayari text provided
+        # Default split if no shayari text provided
+        mid = len(word_timestamps) // 2
+        line1_words = word_timestamps[:mid]
+        line2_words = word_timestamps[mid:]
 
-    if not line1_words or not line2_words:
-        print("  Not enough words for lyrics sync")
+    if not line1_words:
+        print("  Not enough words for subtitles")
         return False, text_color, color_name
 
     filters = []
@@ -807,49 +899,93 @@ def add_synced_subtitles(video_path: str, word_timestamps: list, output_path: st
 
     y1 = "(h*0.75)-70"
     y2 = "(h*0.75)+20"
+    
+    if sync_mode == "word":
+        # Word-by-word lyrical sync mode (building up)
+        print(f"    → Using word-by-word lyrical sync mode (build-up style)")
+        
+        # Calculate font sizes for complete lines first
+        line1_text = " ".join([w["word"] for w in line1_words])
+        line2_text = " ".join([w["word"] for w in line2_words]) if line2_words else ""
+        
+        font_size1 = calculate_font_size(line1_text)
+        font_size2 = calculate_font_size(line2_text) if line2_text else BASE_FONT_SIZE
+        
+        print(f"    → Line 1 ({len(line1_text)} chars): font size {font_size1}")
+        if line2_text:
+            print(f"    → Line 2 ({len(line2_text)} chars): font size {font_size2}")
+        
+        # Build up words progressively for each line
+        for line_idx, line_words in enumerate([line1_words, line2_words]):
+            if not line_words:
+                continue
+                
+            y_pos = y1 if line_idx == 0 else y2
+            font_size = font_size1 if line_idx == 0 else font_size2
+            
+            # For each word in this line, show all words up to and including current word
+            for i in range(len(line_words)):
+                # Build the text up to current word
+                words_so_far = " ".join([w["word"] for w in line_words[:i+1]])
+                start_time = line_words[i]["start"]
+                
+                # End time is when the next word starts (or video end)
+                if i < len(line_words) - 1:
+                    end_time = line_words[i + 1]["start"]
+                else:
+                    # This is the last word in the line, show until video end
+                    end_time = 8.0
+                
+                # Add the progressive text
+                filters.append(
+                    f"drawtext=text='{words_so_far}':fontfile='{FONT_PATH}':fontsize={font_size}:"
+                    f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
+                    f"x=(w-text_w)/2:y={y_pos}:enable='between(t,{start_time},{end_time})'"
+                )
+    else:
+        # Line-based display mode (default)
+        print(f"    → Using line-based display mode")
 
-    line2_start = line2_words[0]["start"]
+        # Calculate font sizes for each line
+        line1_text = " ".join([w["word"] for w in line1_words])
+        line2_text = " ".join([w["word"] for w in line2_words]) if line2_words else ""
+        
+        font_size1 = calculate_font_size(line1_text)
+        font_size2 = calculate_font_size(line2_text) if line2_text else BASE_FONT_SIZE
+        
+        print(f"    → Line 1 ({len(line1_text)} chars): font size {font_size1}")
+        if line2_text:
+            print(f"    → Line 2 ({len(line2_text)} chars): font size {font_size2}")
 
-    # Line 1 words - progressive highlight
-    for i, w in enumerate(line1_words):
-        start = w["start"]
-        prefix = " ".join([lw["word"] for lw in line1_words[:i+1]])
-        next_start = line1_words[i+1]["start"] if i < len(line1_words)-1 else line2_start
+        # Line 1 - appears immediately and stays until line 2
+        if line2_words:
+            line2_start = line2_words[0]["start"] - 0.1
+        else:
+            line2_start = 8.0
 
         filters.append(
-            f"drawtext=text='{prefix}':fontfile='{FONT_PATH}':fontsize={FONT_SIZE}:"
+            f"drawtext=text='{line1_text}':fontfile='{FONT_PATH}':fontsize={font_size1}:"
             f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
-            f"x=(w-text_w)/2:y={y1}:enable='between(t,{start},{next_start})'"
+            f"x=(w-text_w)/2:y={y1}:enable='between(t,0,{line2_start})'"
         )
 
-    # Line 1 fully shown after all words
-    full_line1 = " ".join([w["word"] for w in line1_words])
-    filters.append(
-        f"drawtext=text='{full_line1}':fontfile='{FONT_PATH}':fontsize={FONT_SIZE}:"
-        f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
-        f"x=(w-text_w)/2:y={y1}:enable='gte(t,{line2_start})'"
-    )
-
-    # Line 2 words - progressive highlight
-    for i, w in enumerate(line2_words):
-        start = w["start"]
-        prefix = " ".join([lw["word"] for lw in line2_words[:i+1]])
-        next_start = line2_words[i+1]["start"] if i < len(line2_words)-1 else 8.0
-
-        filters.append(
-            f"drawtext=text='{prefix}':fontfile='{FONT_PATH}':fontsize={FONT_SIZE}:"
-            f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
-            f"x=(w-text_w)/2:y={y2}:enable='between(t,{start},{next_start})'"
-        )
-
-    # Line 2 fully shown after last word
-    full_line2 = " ".join([w["word"] for w in line2_words])
-    last_word_start = line2_words[-1]["start"]
-    filters.append(
-        f"drawtext=text='{full_line2}':fontfile='{FONT_PATH}':fontsize={FONT_SIZE}:"
-        f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
-        f"x=(w-text_w)/2:y={y2}:enable='gte(t,{last_word_start})'"
-    )
+        # Both lines together after line 2 starts
+        if line2_words:
+            start_time2 = max(0, line2_words[0]["start"] - 0.1)
+            
+            # Line 1 continues
+            filters.append(
+                f"drawtext=text='{line1_text}':fontfile='{FONT_PATH}':fontsize={font_size1}:"
+                f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
+                f"x=(w-text_w)/2:y={y1}:enable='gte(t,{start_time2})'"
+            )
+            
+            # Line 2 appears
+            filters.append(
+                f"drawtext=text='{line2_text}':fontfile='{FONT_PATH}':fontsize={font_size2}:"
+                f"fontcolor={text_color}:borderw={BORDER_WIDTH}:bordercolor={BORDER_COLOR}:"
+                f"x=(w-text_w)/2:y={y2}:enable='gte(t,{start_time2})'"
+            )
 
     filter_str = ",".join(filters)
 
@@ -947,8 +1083,134 @@ def generate_human_video_prompt(shayari: str, char_params: dict = None) -> tuple
     return f"{intro}\n{timeline}\n{HUMAN_VIDEO_PROMPT_OUTRO}", char_params
 
 
-def get_word_timestamps(audio_path: str) -> list:
-    """Get word-level timestamps from audio using Gemini 2.5 Pro."""
+def get_word_timestamps_elevenlabs(audio_path: str, text: str) -> list:
+    """Get word-level timestamps from audio using ElevenLabs Scribe API."""
+    if not ELEVEN_LABS_KEY:
+        print("  ElevenLabs API key not found, falling back to Gemini")
+        return None
+    
+    # Read audio file
+    with open(audio_path, 'rb') as f:
+        audio_data = f.read()
+    
+    # ElevenLabs Speech-to-Text endpoint
+    url = "https://api.elevenlabs.io/v1/speech-to-text"
+    
+    headers = {
+        "xi-api-key": ELEVEN_LABS_KEY,
+    }
+    
+    # Prepare multipart form data
+    files = {
+        'file': ('audio.mp3', audio_data, 'audio/mpeg'),
+    }
+    
+    data = {
+        'model_id': 'scribe_v1',  # Scribe v1 model supports 99 languages including Hindi
+        'timestamps_granularity': 'word'  # Request word-level timestamps
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, files=files, data=data)
+        
+        if response.status_code == 200:
+            result = response.json()
+            
+            # Debug: print response structure
+            print(f"    → ElevenLabs response keys: {list(result.keys())}")
+            
+            # Convert ElevenLabs format to our format
+            word_timestamps = []
+            
+            # Check different possible response formats
+            if 'words' in result:
+                for word_data in result['words']:
+                    word_text = word_data.get('word', word_data.get('text', ''))
+                    # Skip spaces and music annotations
+                    if word_text.strip() and not word_text.startswith('(') and not word_text.endswith(')'):
+                        word_timestamps.append({
+                            "word": word_text,
+                            "start": word_data.get('start', 0)  # Already in seconds
+                        })
+            elif 'transcription' in result and 'words' in result['transcription']:
+                for word_data in result['transcription']['words']:
+                    word_text = word_data.get('word', word_data.get('text', ''))
+                    # Skip spaces and music annotations
+                    if word_text.strip() and not word_text.startswith('(') and not word_text.endswith(')'):
+                        word_timestamps.append({
+                            "word": word_text,
+                            "start": word_data.get('start', 0)
+                        })
+            
+            print(f"    → ElevenLabs returned {len(word_timestamps)} word timestamps")
+            
+            return word_timestamps
+        else:
+            print(f"  ElevenLabs API error: {response.status_code} - {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"  ElevenLabs error: {e}")
+        return None
+
+
+def get_word_timestamps(audio_path: str, text: str = None) -> list:
+    """Get word-level timestamps from audio using ElevenLabs (preferred) or Gemini."""
+    
+    # Try ElevenLabs first if we have the text
+    if text and ELEVEN_LABS_KEY:
+        print("    → Using ElevenLabs for word timestamps...")
+        timestamps = get_word_timestamps_elevenlabs(audio_path, text)
+        if timestamps and text:
+            # Filter timestamps to match only words in the original shayari text
+            # Remove all types of quotes and split by whitespace
+            clean_text = text
+            for quote in ['"', '"', '"', "'", "'", "'"]:
+                clean_text = clean_text.replace(quote, '')
+            shayari_words = clean_text.replace('\n', ' ').split()
+            filtered_timestamps = []
+            
+            # Debug print
+            print(f"    → Shayari words to match: {shayari_words}")
+            
+            ts_idx = 0
+            for shayari_word in shayari_words:
+                # Remove punctuation for matching but keep original
+                clean_shayari = shayari_word.strip('।,!.…')
+                
+                # Find matching timestamp
+                found = False
+                for i in range(ts_idx, len(timestamps)):
+                    ts_word = timestamps[i]["word"]
+                    
+                    # Skip spaces and annotations
+                    if ts_word.strip() == "" or (ts_word.startswith("(") and ts_word.endswith(")")):
+                        continue
+                    
+                    clean_ts = ts_word.strip('।,!.…')
+                    
+                    # Remove dots for comparison (हो.. vs हो।)
+                    clean_shayari_nodots = clean_shayari.rstrip('.')
+                    clean_ts_nodots = clean_ts.rstrip('।').rstrip('.')
+                    
+                    # Check if words match
+                    if clean_shayari_nodots.lower() == clean_ts_nodots.lower():
+                        filtered_timestamps.append({
+                            "word": shayari_word,  # Use original shayari word with punctuation
+                            "start": timestamps[i]["start"]
+                        })
+                        ts_idx = i + 1
+                        found = True
+                        break
+                
+                if not found:
+                    print(f"    → Warning: Could not find timestamp for word: {shayari_word}")
+            
+            print(f"    → Filtered {len(timestamps)} timestamps to {len(filtered_timestamps)} matching shayari words")
+            return filtered_timestamps if filtered_timestamps else timestamps
+    
+    # Fallback to Gemini
+    print("    → Using Gemini for word timestamps...")
     response = call_gemini_with_audio(audio_path, AUDIO_TRANSCRIPTION_PROMPT)
 
     # Extract JSON from response
@@ -1007,7 +1269,8 @@ def save_data(data: list, input_path: str, output_dir: Path = None):
 def run_pipeline(
     input_path: str,
     item_index: int = None,
-    force: bool = False
+    force: bool = False,
+    sync_mode: str = "line"
 ):
     """Run the video generation pipeline."""
 
@@ -1165,7 +1428,7 @@ def run_pipeline(
                     word_timestamps = json.load(f)
             else:
                 print("    → Getting word timestamps for synced subtitles...")
-                word_timestamps = get_word_timestamps(human_audio_path)
+                word_timestamps = get_word_timestamps(human_audio_path, shayari)
                 if word_timestamps:
                     with open(word_timestamps_path, "w") as f:
                         json.dump(word_timestamps, f, ensure_ascii=False, indent=2)
@@ -1178,7 +1441,7 @@ def run_pipeline(
         # OUTPUT 1: ambient_video.mp4 (ambient video + mixed audio + subtitles)
         # ---------------------------------------------------------------------
         if Path(ambient_video_path).exists() and Path(human_audio_path).exists():
-            if force or not formats.get("ambient_video"):
+            if force or not formats.get("ambient_video") or not Path(ambient_recital_path).exists():
                 print("  → Creating ambient_video.mp4...")
 
                 if bg_audio:
@@ -1191,7 +1454,8 @@ def run_pipeline(
 
                         if word_timestamps:
                             print("    → Adding synced subtitles at 75%...")
-                            success, color_hex, color_name = add_synced_subtitles(temp_video, word_timestamps, ambient_recital_path)
+                            item_sync_mode = item.get("sync_mode", sync_mode)  # Get sync mode from item or use command line default
+                            success, color_hex, color_name = add_synced_subtitles(temp_video, word_timestamps, ambient_recital_path, shayari_text=shayari, sync_mode=item_sync_mode)
                             if success:
                                 formats["ambient_video"] = ambient_recital_path
                                 item["ambient_subtitle_color"] = {"hex": color_hex, "name": color_name}
@@ -1226,7 +1490,7 @@ def run_pipeline(
         recital_output_path = str(output_dir / "recital_video.mp4")
 
         if Path(human_recital_raw).exists() and Path(human_audio_path).exists():
-            if force or not formats.get("recital_video"):
+            if force or not formats.get("recital_video") or not Path(recital_output_path).exists():
                 print("  → Creating recital_video.mp4...")
 
                 if bg_audio:
@@ -1240,7 +1504,8 @@ def run_pipeline(
                         if word_timestamps:
                             # Use a DIFFERENT subtitle color for recital video
                             print("    → Adding synced subtitles at 75% (different color)...")
-                            success, color_hex, color_name = add_synced_subtitles(temp_video, word_timestamps, recital_output_path)
+                            item_sync_mode = item.get("sync_mode", sync_mode)  # Get sync mode from item or use command line default
+                            success, color_hex, color_name = add_synced_subtitles(temp_video, word_timestamps, recital_output_path, shayari_text=shayari, sync_mode=item_sync_mode)
                             if success:
                                 formats["recital_video"] = recital_output_path
                                 item["recital_subtitle_color"] = {"hex": color_hex, "name": color_name}
@@ -1280,13 +1545,16 @@ def main():
     parser.add_argument("--input", type=str, required=True, help="Input JSON file")
     parser.add_argument("--index", type=int, help="Process single item by index")
     parser.add_argument("--force", action="store_true", help="Regenerate even if output exists")
+    parser.add_argument("--sync-mode", choices=["line", "word"], default="line", 
+                        help="Subtitle sync mode: 'line' (default) or 'word' (lyrical sync)")
 
     args = parser.parse_args()
 
     run_pipeline(
         args.input,
         item_index=args.index,
-        force=args.force
+        force=args.force,
+        sync_mode=args.sync_mode
     )
 
 

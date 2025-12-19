@@ -16,3 +16,4 @@
 inputs/
 outputs/
 service_account.json
+venv
